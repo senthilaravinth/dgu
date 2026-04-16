@@ -6,33 +6,34 @@ pipeline {
     }
 
     environment {
-        // Descriptive name for your project assessment
         IMAGE_NAME = "digital-wallet-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
-        stage('Maven Build & Test') {
+        stage('Build & Test') {
             steps {
-                echo 'Running JUnit Tests and Packaging...'
-                // This ensures Task 2 and 3 are verified
+                echo 'Running Maven build and JUnit tests...'
                 bat 'mvn clean package'
             }
         }
 
-        stage('Docker Image Build') {
+        stage('Dockerize') {
             steps {
-                echo 'Building Docker Image for Digital Wallet...'
-                // Build the image using the local Dockerfile
+                echo 'Building Docker image...'
                 bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 bat "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
-        stage('Security & Verification') {
+        stage('K8s Deployment') {
             steps {
-                echo 'Verifying Docker Image exists locally...'
-                bat "docker images | findstr ${IMAGE_NAME}"
+                echo 'Deploying to Kubernetes from root folder...'
+                // Updated path to root
+                bat "kubectl apply -f deployment.yaml"
+                
+                echo 'Verifying Pod status...'
+                bat "kubectl get pods"
             }
         }
     }
@@ -42,10 +43,7 @@ pipeline {
             junit '**/target/surefire-reports/*.xml'
         }
         success {
-            echo "Successfully built Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-        }
-        failure {
-            echo "Pipeline failed. Ensure Docker Desktop is running on your machine."
+            echo "Successfully deployed! Access the wallet app at http://localhost:30005"
         }
     }
 }
