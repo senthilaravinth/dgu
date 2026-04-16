@@ -2,53 +2,50 @@ pipeline {
     agent any
 
     tools {
-        // Must match the name in: Manage Jenkins -> Global Tool Configuration -> Maven
         maven 'Maven'
     }
 
+    environment {
+        // Descriptive name for your project assessment
+        IMAGE_NAME = "digital-wallet-app"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+
     stages {
-        stage('Clean Workspace') {
+        stage('Maven Build & Test') {
             steps {
-                echo 'Cleaning up previous build files...'
-                bat 'mvn clean'
+                echo 'Running JUnit Tests and Packaging...'
+                // This ensures Task 2 and 3 are verified
+                bat 'mvn clean package'
             }
         }
 
-        stage('Execute Unit Tests') {
+        stage('Docker Image Build') {
             steps {
-                echo 'Running Wallet Transaction JUnit tests...'
-                // This runs the 3 tests we wrote in AppTest.java
-                bat 'mvn test'
+                echo 'Building Docker Image for Digital Wallet...'
+                // Build the image using the local Dockerfile
+                bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                bat "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
-        stage('Compile & Package') {
+        stage('Security & Verification') {
             steps {
-                echo 'Compiling code and generating JAR file...'
-                // Skips tests here because they passed in the previous stage
-                bat 'mvn package -DskipTests'
-            }
-        }
-
-        stage('Archive Build Artifacts') {
-            steps {
-                echo 'Saving the generated JAR file in Jenkins...'
-                // This makes the wallet-app.jar available to download from the Jenkins UI
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                echo 'Verifying Docker Image exists locally...'
+                bat "docker images | findstr ${IMAGE_NAME}"
             }
         }
     }
 
     post {
         always {
-            // This pulls the JUnit XML reports into the Jenkins UI graph
             junit '**/target/surefire-reports/*.xml'
         }
         success {
-            echo "Build Successful! Your Digital Wallet JAR is ready in the target folder."
+            echo "Successfully built Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo "Build Failed. Check the Console Output for Maven or JUnit errors."
+            echo "Pipeline failed. Ensure Docker Desktop is running on your machine."
         }
     }
 }
